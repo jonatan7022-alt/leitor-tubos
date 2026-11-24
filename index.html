@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Leitor de Tubos</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-title" content="Leitor Tubos">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0e1116;--ink:#eef1f5;--mut:#9aa4b2;--line:#262c35;--card:#171c23;--accent:#3fb39a;--sold:#3b7bff;--esg:#d9773f;--irr:#1fb36b;--agro:#d4a514;--bad:#ff5147;--sat:env(safe-area-inset-top,0px);--sab:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;min-width:0;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:#000;color:var(--ink);font:16px/1.5 Figtree,system-ui,sans-serif;overflow:hidden}
+button{font:inherit;color:inherit}
+.view{position:fixed;inset:0 0 calc(64px + var(--sab)) 0;display:none}
+.view.on{display:block}
+/* scanner */
+#cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
+.shade{position:absolute;inset:0;pointer-events:none}
+.top{position:absolute;top:0;left:0;right:0;padding:calc(12px + var(--sat)) 16px 12px;display:flex;justify-content:space-between;align-items:center;background:linear-gradient(#000a,#0000)}
+.top h1{font-size:22px;line-height:1.1;margin:0;font-weight:800}
+.brand{display:flex;align-items:center;gap:10px}
+.app{font-size:13px;color:#ffffffcc}
+.logo{width:44px;height:44px;border-radius:11px;display:block;flex:none}
+.msg{position:absolute;left:16px;right:16px;bottom:20px;text-align:center;font-size:15px;color:#fff;text-shadow:0 1px 3px #000}
+#laser{position:absolute;left:0;right:0;height:2px;background:var(--accent);box-shadow:0 0 12px var(--accent)}
+@media(prefers-reduced-motion:no-preference){#laser{animation:sweep 2s ease-in-out infinite alternate}}
+@keyframes sweep{from{transform:translateY(-40px)}to{transform:translateY(40px)}}
+.err{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:32px;text-align:center;background:var(--bg)}
+.err.on{display:flex}
+.btn{min-height:52px;padding:0 22px;border:0;border-radius:14px;background:var(--accent);color:#04231c;font-weight:800;font-size:17px;cursor:pointer}
+.btn.ghost{background:var(--card);color:var(--ink)}
+/* resultado */
+.sheet{position:fixed;left:0;right:0;bottom:calc(64px + var(--sab));z-index:5;background:var(--bg);border-radius:22px 22px 0 0;padding:10px 20px 20px;transform:translateY(calc(105% + 64px + var(--sab)));transition:transform .22s ease-out;box-shadow:0 -10px 40px #0008}
+.sheet.on{transform:none}
+.grab{width:40px;height:5px;border-radius:3px;background:var(--line);margin:0 auto 14px}
+.res{display:grid;grid-template-columns:auto minmax(0,1fr);gap:14px;align-items:center}
+.pipe{width:72px;height:72px}
+.tag{display:inline-block;font-size:13px;font-weight:600;color:#fff;background:var(--c);border-radius:6px;padding:2px 8px}
+.desc{font-size:22px;font-weight:800;line-height:1.15;margin:6px 0}
+.meta{display:flex;flex-wrap:wrap;gap:2px 16px;font-size:15px;color:var(--mut)}
+.meta b{color:var(--ink);font-variant-numeric:tabular-nums}
+.res.bad .desc{color:var(--bad)}
+.sheet .row2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;margin-top:18px}
+/* listas */
+.page{height:100%;overflow-y:auto;background:var(--bg);padding:calc(16px + var(--sat)) max(4vw,16px) 24px}
+.page h2{font-size:28px;line-height:1.05;margin:4px 0 14px;font-weight:800}
+.head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.link{background:none;border:0;color:var(--accent);font-weight:600;min-height:44px;cursor:pointer}
+input{width:100%;min-height:50px;border:2px solid var(--line);border-radius:12px;padding:0 14px;font:600 16px Figtree,system-ui,sans-serif;background:var(--card);color:var(--ink);margin-bottom:12px}
+input:focus-visible,button:focus-visible,.item:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.chips{display:flex;gap:8px;overflow-x:auto;margin:0 0 10px;padding-bottom:2px}
+.chip{flex:none;min-height:40px;padding:0 14px;border-radius:20px;border:2px solid var(--line);background:none;font-weight:600;font-size:14px;cursor:pointer}
+.chip[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.item{display:grid;grid-template-columns:10px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px 2px;border-bottom:1px solid var(--line);cursor:pointer}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--c)}
+.item .d{font-weight:600;font-size:15px}
+.item .c{font-size:13px;color:var(--mut);font-variant-numeric:tabular-nums}
+.item .t{font-size:13px;color:var(--mut);white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
+.empty{color:var(--mut);text-align:center;padding:40px 12px}
+/* navegação */
+nav{position:fixed;left:0;right:0;bottom:0;height:calc(64px + var(--sab));padding-bottom:var(--sab);display:grid;grid-template-columns:repeat(3,minmax(0,1fr));background:#0b0d11;border-top:1px solid var(--line);z-index:10}
+nav button{background:none;border:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:12px;color:var(--mut);cursor:pointer}
+nav button svg{width:24px;height:24px}
+nav button[aria-current=true]{color:var(--accent)}
+@media(max-width:380px){.item{grid-template-columns:10px minmax(0,1fr)}.item .t{grid-column:2;text-align:left}.desc{font-size:19px}}
+</style>
+</head>
+<body>
+
+<section class="view on" id="v-scan">
+  <video id="cam" playsinline muted autoplay></video>
+  <svg class="shade" id="shade" aria-hidden="true"></svg>
+  <div class="top">
+    <div class="brand"><img class="logo" src="icon-192.png" alt="" width="44" height="44"><div><h1>Jonatan</h1><div class="app">Leitor de tubos</div></div></div>
+  </div>
+  <p class="msg" id="msg">Aponte para o código de barras</p>
+  <div class="err" id="err">
+    <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7h3l2-3h8l2 3h3v13H3z"/><circle cx="12" cy="13" r="4"/><path d="M3 3l18 18"/></svg>
+    <div id="errTxt" style="max-width:320px">Não consegui abrir a câmera.</div>
+    <button class="btn" id="retry">Permitir câmera</button>
+    <button class="btn ghost" data-go="cat">Digitar o código</button>
+  </div>
+</section>
+
+<section class="view" id="v-hist">
+  <div class="page">
+    <div class="head"><h2>Histórico</h2><button class="link" id="clear">Limpar</button></div>
+    <div id="hlist"></div>
+  </div>
+</section>
+
+<section class="view" id="v-cat">
+  <div class="page">
+    <h2>Catálogo</h2>
+    <form id="form" autocomplete="off"><input id="q" inputmode="search" placeholder="Buscar ou digitar EAN / código" aria-label="Buscar tubo"></form>
+    <div class="chips" id="chips"></div>
+    <div id="list"></div>
+  </div>
+</section>
+
+<div class="sheet" id="sheet" role="dialog" aria-live="polite">
+  <div class="grab"></div>
+  <div id="sheetBody"></div>
+  <div class="row2">
+    <button class="btn ghost" id="copy">Copiar EAN</button>
+    <button class="btn" id="again">Ler outro</button>
+  </div>
+</div>
+
+<nav>
+  <button data-go="scan" aria-current="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 8v8M10 8v8M13 8v8M17 8v8"/></svg>Ler</button>
+  <button data-go="hist"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Histórico</button>
+  <button data-go="cat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>Catálogo</button>
+</nav>
+
+<script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js"></script>
+<script>
+{
+/* ---------- dados ---------- */
+const R=[
+["11001","TUBO PVC SOLD 20MM-6MTS","7898495133210"],["11002","TUBO PVC SOLD 25MM-6MTS","7898495133227"],["11003","TUBO PVC SOLD 32MM-6MTS","7898495133234"],["11004","TUBO PVC SOLD 40MM-6MTS","7898495133241"],["11005","TUBO PVC SOLD 50MM-6MTS","7898495133258"],["11006","TUBO PVC SOLD 60MM-6MTS","7898495133265"],
+["14001","TUBO PVC ESG DN40-6MTS","7898495133272"],["14002","TUBO PVC ESG DN50-6MTS","7898495133289"],["14003","TUBO PVC ESG DN75-6MTS","7898495133296"],["14004","TUBO PVC ESG DN100-6MTS","7898495133302"],["14005","TUBO PVC ESG DN150-6MTS","7898495133784"],["14006","TUBO PVC ESG DN200-6MTS","7898495133791"],
+["60010","TUBO IRRIGACAO PN 80 - 2 - ERA","7898495136457"],["60011","TUBO IRRIGACAO PN 80 - 3 - ERA","7898495136464"],
+["68010","TUBO IRRIGA PN 40 DN 35 - FIXA - PBS","7898495133579"],["68011","TUBO IRRIGA PN 40 DN 50 - FIXA - PBS","7898495133586"],["68012","TUBO IRRIGA PN 40 DN 75 - FIXA - PBS","7898495133593"],["68013","TUBO IRRIGA PN 40 DN 100 - FIXA - PBS","7898495133609"],["68014","TUBO IRRIGA PN 40 DN 125 - FIXA - PBS","7898495133616"],["68015","TUBO IRRIGA PN 40 DN 150 - FIXA - PBS","7898495133623"],
+["68020","TUBO IRRIGA PN 60 DN 35 - FIXA - PBS","7898495134897"],["68021","TUBO IRRIGA PN 60 DN 50 - FIXA - PBS","7898495133630"],["68022","TUBO IRRIGA PN 60 DN 75 - FIXA - PBS","7898495133647"],["68023","TUBO IRRIGA PN 60 DN 100 - FIXA - PBS","7898495133654"],["68024","TUBO IRRIGA PN 60 DN 125 - FIXA - PBS","7898495133661"],["68025","TUBO IRRIGA PN 60 DN 150 - FIXA - PBS","7898495133678"],
+["68031","TUBO IRRIGA PN 80 DN 50 - FIXA - PBS","7898495133685"],["68032","TUBO IRRIGA PN 80 DN 75 - FIXA - PBS","7898495133692"],["68033","TUBO IRRIGA PN 80 DN 100 - FIXA - PBS","7898495133708"],["68034","TUBO IRRIGA PN 80 DN 125 - FIXA - PBS","7898495133937"],["68035","TUBO IRRIGA PN 80 DN 150 - FIXA - PBS","7898495133715"],
+["68041","TUBO IRRIGA PN 125 DN 50 - FIXA - PBS","7898495134903"],["68042","TUBO IRRIGA PN 125 DN 75 - FIXA - PBS","7898495134910"],["68043","TUBO IRRIGA PN 125 DN 100 - FIXA - PBS","7898495134927"],
+["68070","TUBO IRRIGA PN 60 DN 20 - AGROPECUARIO","7898495135078"],["68071","TUBO IRRIGA PN 60 DN 25 - AGROPECUARIO","7898495133722"],["68072","TUBO IRRIGA PN 60 DN 32 - AGROPECUARIO","7898495133739"],["68073","TUBO IRRIGA PN 60 DN 40 - AGROPECUARIO","7898495133746"],["68076","TUBO IRRIGA PN 80 DN 25 - AGROPECUARIO","7898495133753"],["68077","TUBO IRRIGA PN 80 DN 32 - AGROPECUARIO","7898495134163"]
+];
+const FAM={sold:["Soldável","var(--sold)"],esg:["Esgoto","var(--esg)"],irr:["Irrigação","var(--irr)"],agro:["Agropecuário","var(--agro)"]};
+const fam=d=>d.includes("AGRO")?"agro":d.includes("IRRIGA")?"irr":d.includes("ESG")?"esg":"sold";
+const P=R.map(([cod,desc,ean])=>({cod,desc,ean,f:fam(desc)}));
+const byEan=new Map(P.map(p=>[p.ean,p])),byCod=new Map(P.map(p=>[p.cod,p]));
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtEan=e=>e.length===13?`${e.slice(0,1)} ${e.slice(1,7)} ${e.slice(7)}`:e;
+const pipe=c=>`<svg class="pipe" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="44" fill="${c}"/><circle cx="50" cy="50" r="30" fill="var(--bg)"/><circle cx="50" cy="50" r="30" fill="none" stroke="#000" stroke-opacity=".3" stroke-width="4"/><path d="M22 34a34 34 0 0 1 22-18" stroke="#fff" stroke-opacity=".5" stroke-width="4" fill="none" stroke-linecap="round"/></svg>`;
+const vib=p=>{try{navigator.vibrate&&navigator.vibrate(p)}catch(e){}};
+let beepCtx;
+function beep(ok){try{beepCtx=beepCtx||new (window.AudioContext||window.webkitAudioContext)();const o=beepCtx.createOscillator(),g=beepCtx.createGain();o.frequency.value=ok?1800:400;g.gain.value=.08;o.connect(g).connect(beepCtx.destination);o.start();o.stop(beepCtx.currentTime+(ok?.09:.25))}catch(e){}}
+
+/* ---------- histórico ---------- */
+let hist=[];
+try{hist=JSON.parse(localStorage.getItem("tubos-hist2")||"[]")}catch(e){}
+const saveHist=()=>{try{localStorage.setItem("tubos-hist2",JSON.stringify(hist.slice(0,200)))}catch(e){}};
+function drawHist(){
+  $("hlist").innerHTML=hist.length?hist.map(h=>{const p=byEan.get(h.v)||byCod.get(h.v);const d=new Date(h.t);
+    const hora=d.toLocaleDateString("pt-BR",{day:"2-digit",month:"2-digit"})+" "+d.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+    return p?`<div class="item" tabindex="0" data-cod="${p.cod}" style="--c:${FAM[p.f][1]}"><span class="dot"></span><div><div class="d">${esc(p.desc)}</div><div class="c">${p.cod} · ${p.ean}</div></div><div class="t">${hora}</div></div>`
+            :`<div class="item" style="--c:var(--bad)"><span class="dot"></span><div><div class="d">Não cadastrado</div><div class="c">${esc(h.v)}</div></div><div class="t">${hora}</div></div>`}).join("")
+    :`<div class="empty">Nada lido ainda.</div>`;
+}
+$("clear").onclick=()=>{hist=[];saveHist();drawHist()};
+
+/* ---------- resultado ---------- */
+let current=null;
+function show(p,raw,log=true){
+  current=p;
+  if(p){
+    const [nome,cor]=FAM[p.f];
+    $("sheetBody").innerHTML=`<div class="res" style="--c:${cor}"><div>${pipe(cor)}</div><div><span class="tag">${nome}</span><div class="desc">${esc(p.desc)}</div><div class="meta"><span>Código <b>${p.cod}</b></span><span>EAN <b>${fmtEan(p.ean)}</b></span></div></div></div>`;
+    vib(80);beep(true);
+  }else{
+    $("sheetBody").innerHTML=`<div class="res bad"><div>${pipe("var(--bad)")}</div><div><div class="desc">Código não cadastrado</div><div class="meta">Lido: <b>${esc(raw)}</b></div></div></div>`;
+    vib([60,60,60]);beep(false);
+  }
+  $("copy").hidden=!p;
+  if(log){hist.unshift({v:p?p.ean:String(raw),t:Date.now()});saveHist();drawHist()}
+  $("sheet").classList.add("on");
+}
+function hideSheet(){$("sheet").classList.remove("on");lastCode="";}
+$("again").onclick=()=>{hideSheet();go("scan")};
+$("copy").onclick=async()=>{if(!current)return;try{await navigator.clipboard.writeText(current.ean);$("copy").textContent="Copiado!"}catch(e){$("copy").textContent=current.ean}setTimeout(()=>$("copy").textContent="Copiar EAN",1500)};
+function lookup(raw){
+  const v=String(raw).replace(/\D/g,"");if(!v)return;
+  let p=byEan.get(v)||byCod.get(v);
+  if(!p&&v.length===12)p=byEan.get("0"+v);
+  show(p,v);
+}
+
+/* ---------- catálogo ---------- */
+let filtro="all";
+const chips=[["all","Todos"],...Object.entries(FAM).map(([k,v])=>[k,v[0]])];
+function drawChips(){$("chips").innerHTML=chips.map(([k,n])=>`<button class="chip" data-f="${k}" aria-pressed="${k===filtro}">${n}</button>`).join("")}
+function drawList(){
+  const t=$("q").value.trim().toUpperCase(),n=t.replace(/\s/g,""),num=/^\d+$/.test(n);
+  const items=P.filter(p=>(filtro==="all"||p.f===filtro)&&(!t||(num?(p.ean.includes(n)||p.cod.includes(n)):p.desc.includes(t))));
+  $("list").innerHTML=items.map(p=>`<div class="item" tabindex="0" data-cod="${p.cod}" style="--c:${FAM[p.f][1]}"><span class="dot"></span><div><div class="d">${esc(p.desc)}</div><div class="c">${p.cod}</div></div><div class="t">${p.ean}</div></div>`).join("")||`<div class="empty">Nada encontrado.</div>`;
+}
+$("chips").onclick=e=>{const b=e.target.closest("[data-f]");if(!b)return;filtro=b.dataset.f;drawChips();drawList()};
+const pick=log=>e=>{if(e.type==="keydown"&&e.key!=="Enter")return;const r=e.target.closest("[data-cod]");if(r)show(byCod.get(r.dataset.cod),"",log)};
+$("list").onclick=pick(false);$("list").onkeydown=pick(false);
+$("hlist").onclick=pick(false);$("hlist").onkeydown=pick(false);
+$("form").onsubmit=e=>{e.preventDefault();lookup($("q").value);$("q").blur()};
+$("q").oninput=()=>{const v=$("q").value.replace(/\D/g,"");if(v.length===13&&byEan.has(v)){lookup(v);$("q").value=""}drawList()};
+
+/* ---------- navegação ---------- */
+function go(v){
+  for(const s of document.querySelectorAll(".view"))s.classList.toggle("on",s.id==="v-"+v);
+  for(const b of document.querySelectorAll("nav button"))b.setAttribute("aria-current",b.dataset.go===v);
+  if(v==="scan")startCam();else stopCam();
+}
+document.addEventListener("click",e=>{const b=e.target.closest("[data-go]");if(b){hideSheet();go(b.dataset.go)}});
+
+/* ---------- câmera ---------- */
+const video=$("cam");
+let stream=null,running=false,detector=null,zx=null,lastCode="",streak=0,busy=false;
+const work=document.createElement("canvas"),wctx=work.getContext("2d",{willReadFrequently:true});
+
+if("BarcodeDetector" in window){
+  BarcodeDetector.getSupportedFormats().then(f=>{if(f.includes("ean_13"))detector=new BarcodeDetector({formats:["ean_13","ean_8","upc_a"]})}).catch(()=>{});
+}
+function initZx(){
+  if(zx||!window.ZXing)return;
+  const Z=window.ZXing,h=new Map();
+  h.set(Z.DecodeHintType.POSSIBLE_FORMATS,[Z.BarcodeFormat.EAN_13,Z.BarcodeFormat.EAN_8,Z.BarcodeFormat.UPC_A]);
+  h.set(Z.DecodeHintType.TRY_HARDER,true);
+  zx=new Z.MultiFormatReader();zx.setHints(h);
+}
+
+/* janela de leitura: faixa horizontal no meio */
+function box(){const W=video.clientWidth,H=video.clientHeight,w=Math.min(W*.86,520),h=Math.min(H*.28,220);return{x:(W-w)/2,y:(H-h)/2-30,w,h,W,H}}
+function drawShade(){
+  const b=box(),s=$("shade"),c=22;
+  s.setAttribute("viewBox",`0 0 ${b.W} ${b.H}`);
+  s.innerHTML=`<path fill="#000" fill-opacity=".55" fill-rule="evenodd" d="M0 0H${b.W}V${b.H}H0Z M${b.x} ${b.y+14}q0-14 14-14H${b.x+b.w-14}q14 0 14 14V${b.y+b.h-14}q0 14-14 14H${b.x+14}q-14 0-14-14Z"/>
+  <g fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"><path d="M${b.x} ${b.y+c}V${b.y+10}q0-10 10-10H${b.x+c}"/><path d="M${b.x+b.w-c} ${b.y}H${b.x+b.w-10}q10 0 10 10V${b.y+c}"/><path d="M${b.x+b.w} ${b.y+b.h-c}V${b.y+b.h-10}q0 10-10 10H${b.x+b.w-c}"/><path d="M${b.x+c} ${b.y+b.h}H${b.x+10}q-10 0-10-10V${b.y+b.h-c}"/></g>`;
+  let l=$("laser");if(!l){l=document.createElement("div");l.id="laser";$("v-scan").appendChild(l)}
+  l.style.top=(b.y+b.h/2)+"px";l.style.left=(b.x+16)+"px";l.style.right=(b.W-b.x-b.w+16)+"px";
+}
+const ro=new ResizeObserver(drawShade);ro.observe(video);
+
+/* recorta a área visível da janela no quadro do vídeo */
+function grab(){
+  const vw=video.videoWidth,vh=video.videoHeight;if(!vw)return null;
+  const b=box(),sc=Math.max(b.W/vw,b.H/vh),ox=(b.W-vw*sc)/2,oy=(b.H-vh*sc)/2;
+  const sx=Math.max(0,(b.x-ox)/sc),sy=Math.max(0,(b.y-oy)/sc),sw=Math.min(vw-sx,b.w/sc),sh=Math.min(vh-sy,b.h/sc);
+  const k=Math.min(1,900/sw);
+  work.width=Math.round(sw*k);work.height=Math.round(sh*k);
+  wctx.drawImage(video,sx,sy,sw,sh,0,0,work.width,work.height);
+  return work;
+}
+
+async function tick(){
+  if(!running)return;
+  if(!busy&&!$("sheet").classList.contains("on")&&video.readyState>=2){
+    busy=true;
+    let code=null;
+    try{
+      if(detector){const r=await detector.detect(video);if(r.length)code=r[0].rawValue}
+      else{initZx();const cv=grab();if(zx&&cv){const Z=window.ZXing;
+        try{code=zx.decode(new Z.BinaryBitmap(new Z.HybridBinarizer(new Z.HTMLCanvasElementLuminanceSource(cv)))).getText()}catch(e){}}}
+    }catch(e){}
+    if(code){
+      /* confirma lendo o mesmo código 2x seguidas, evita leitura errada */
+      if(code===lastCode)streak++;else{lastCode=code;streak=1}
+      if(streak>=2||byEan.has(code)){streak=0;lookup(code)}
+    }
+    busy=false;
+  }
+  setTimeout(()=>requestAnimationFrame(tick),detector?120:60);
+}
+
+async function startCam(){
+  if(running)return;
+  $("err").classList.remove("on");
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){camErr("Este navegador não libera a câmera. Abra o link pelo Chrome (Android) ou Safari (iPhone), num endereço https.");return}
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:false,video:{facingMode:{ideal:"environment"},width:{ideal:1920},height:{ideal:1080},focusMode:"continuous"}});
+    video.srcObject=stream;await video.play();
+    running=true;drawShade();tick();
+    const tr=stream.getVideoTracks()[0],cap=tr.getCapabilities?tr.getCapabilities():{};
+    if(cap.focusMode&&cap.focusMode.includes("continuous"))tr.applyConstraints({advanced:[{focusMode:"continuous"}]}).catch(()=>{});
+  }catch(e){
+    camErr(e&&e.name==="NotAllowedError"?"A câmera foi bloqueada. Toque abaixo e permita o acesso (ou libere nas configurações do navegador).":"Não consegui abrir a câmera.");
+  }
+}
+function camErr(t){$("errTxt").textContent=t;$("err").classList.add("on")}
+function stopCam(){running=false;if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}}
+$("retry").onclick=startCam;
+document.addEventListener("visibilitychange",()=>{if(document.hidden)stopCam();else if($("v-scan").classList.contains("on"))startCam()});
+
+drawChips();drawList();drawHist();
+startCam();
+}
+</script>
+</body>
+</html>
